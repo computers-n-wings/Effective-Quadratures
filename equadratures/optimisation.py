@@ -273,16 +273,16 @@ class Optimisation:
                     eta_1=kwargs.get('eta_1', 0.1), eta_2=kwargs.get('eta_2', 0.7), \
                     gam_dec=kwargs.get('gam_dec', 0.5), gam_inc=kwargs.get('gam_inc', 2.0), \
                     gam_inc_overline=kwargs.get('gam_inc_overline', 2.5), alpha_1=kwargs.get('alpha_1', 0.1), \
-                    alpha_2=kwargs.get('alpha_2', 0.5), omega_s=kwargs.get('omega_s', 0.5),  \
+                    alpha_2=kwargs.get('alpha_2', 0.5), omega_s=kwargs.get('omega_s', 0.5), gam_s=kwargs.get('gam_s', 0.5),  \
                     max_evals=kwargs.get('max_evals', 10000), random_initial=kwargs.get('random_initial', False), \
                     scale_bounds=kwargs.get('scale_bounds', False))
             sol = {'x': self.s_old, 'fun': self.f_old, 'nfev': self.num_evals}
         elif self.method in ['omorf']:
             self._omorf(x0, d=kwargs.get('d', 1), subspace_method=kwargs.get('subspace_method', 'active-subspaces'), \
                     del_k=kwargs.get('del_k', None), rho_min=kwargs.get('rho_min', 1.0e-8), eta_1=kwargs.get('eta_1', 0.1), \
-                    eta_2=kwargs.get('eta_2', 0.7), gam_dec=kwargs.get('gam_dec', 0.98), gam_inc=kwargs.get('gam_inc', 2.0), \
-                    gam_inc_overline=kwargs.get('gam_inc_overline', 2.5), alpha_1=kwargs.get('alpha_1', 0.9), \
-                    alpha_2=kwargs.get('alpha_2', 0.95), omega_s=kwargs.get('omega_s', 0.5), \
+                    eta_2=kwargs.get('eta_2', 0.7), gam_dec=kwargs.get('gam_dec', 0.5), gam_inc=kwargs.get('gam_inc', 2.0), \
+                    gam_inc_overline=kwargs.get('gam_inc_overline', 2.5), alpha_1=kwargs.get('alpha_1', 0.1), \
+                    alpha_2=kwargs.get('alpha_2', 0.5), omega_s=kwargs.get('omega_s', 0.5), gam_s=kwargs.get('gam_s', 0.5),  \
                     max_evals=kwargs.get('max_evals', 1000), random_initial=kwargs.get('random_initial', False), \
                     scale_bounds=kwargs.get('scale_bounds', False))
             sol = {'x': self.s_old, 'fun': self.f_old, 'nfev': self.num_evals}
@@ -538,7 +538,7 @@ class Optimisation:
             if S_hat.shape != np.unique(S_hat, axis=0).shape:
                 S_hat, indices = np.unique(S_hat, axis=0, return_index=True)
                 f_hat = f_hat[indices]
-            elif f_hat.size > q and max(np.linalg.norm(S_hat-self.s_old, axis=1, ord=np.inf)) > dist:
+            if f_hat.size > q and max(np.linalg.norm(S_hat-self.s_old, axis=1, ord=np.inf)) > dist:
                 S_hat, f_hat = self._remove_furthest_point(S_hat, f_hat, self.s_old)
             S_hat, f_hat = self._remove_point_from_set(S_hat, f_hat, self.s_old)
             S = np.zeros((q, self.n))
@@ -848,7 +848,7 @@ class Optimisation:
         self._set_iterate()
 
     def _trust_region(self, s_old, del_k, rho_min, eta_1, eta_2, gam_dec, gam_inc, gam_inc_overline, alpha_1, alpha_2, \
-            omega_s, max_evals, random_initial, scale_bounds):
+            omega_s, gam_s, max_evals, random_initial, scale_bounds):
         """
         Computes optimum using the ``trust-region`` method
         """
@@ -908,7 +908,7 @@ class Optimisation:
         return
 
     def _omorf(self, s_old, d, subspace_method, del_k, rho_min, eta_1, eta_2, gam_dec, gam_inc, gam_inc_overline, \
-            alpha_1, alpha_2, omega_s, max_evals, random_initial, scale_bounds):
+            alpha_1, alpha_2, omega_s, gam_s, max_evals, random_initial, scale_bounds):
         """
         Computes optimum using the ``omorf`` method
         """
@@ -941,7 +941,7 @@ class Optimisation:
             if step_dist < omega_s*self.rho_k:
                 self._set_ratio(-0.1)
                 self._set_unsuccessful_iterate_counter(3)
-                self._set_del_k(max(0.5*self.del_k, self.rho_k))
+                self._set_del_k(max(gam_s*self.del_k, self.rho_k))
                 S_full, f_full, S_red, f_red = self._update_geometry_omorf(S_full, f_full, S_red, f_red)
                 continue
             f_new = self._blackbox_evaluation(s_new)
