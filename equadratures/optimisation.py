@@ -538,8 +538,8 @@ class Optimisation:
             if S_hat.shape != np.unique(S_hat, axis=0).shape:
                 S_hat, indices = np.unique(S_hat, axis=0, return_index=True)
                 f_hat = f_hat[indices]
-            if f_hat.size > q and max(np.linalg.norm(S_hat-self.s_old, axis=1, ord=np.inf)) > dist:
-                S_hat, f_hat = self._remove_furthest_point(S_hat, f_hat, self.s_old)
+            # if f_hat.size > q and max(np.linalg.norm(S_hat-self.s_old, axis=1, ord=np.inf)) > dist:
+            #     S_hat, f_hat = self._remove_furthest_point(S_hat, f_hat, self.s_old)
             S_hat, f_hat = self._remove_point_from_set(S_hat, f_hat, self.s_old)
             S = np.zeros((q, self.n))
             f = np.zeros((q, 1))
@@ -550,7 +550,7 @@ class Optimisation:
             S_hat = np.copy(S)
             f_hat = np.copy(f)
             if max(np.linalg.norm(S_hat-self.s_old, axis=1, ord=np.inf)) > dist:
-                S_hat, f_hat = self._remove_furthest_point(S_hat, f_hat, self.s_old)
+                S_hat, f_hat = self._remove_furthest_point(S_hat, f_hat, self.s_old)  
             S_hat, f_hat = self._remove_point_from_set(S_hat, f_hat, self.s_old)
             S = np.zeros((q, self.n))
             f = np.zeros((q, 1))
@@ -567,11 +567,11 @@ class Optimisation:
         return S, f
     
     def _LU_pivoting(self, S, f, S_hat, f_hat, full_space, method=None):
-        psi_1 = 1.0e-4
-        if self.method == 'omorf' and full_space:
-            psi_2 = 1.0
-        else:
-            psi_2 = 0.25
+        # psi_1 = 1.0e-4
+        # if self.method == 'omorf' and full_space:
+        #     psi_2 = 1.0
+        # else:
+        #     psi_2 = 0.25
         phi_function, phi_function_deriv = self._get_phi_function_and_derivative(S_hat, full_space)
         if full_space:
             q = self.p
@@ -590,13 +590,15 @@ class Optimisation:
 #           If there are still points to choose from, find if points meet criterion. If so, use the index to choose 
 #           point with given index to be next point in regression/interpolation set
             if f_hat.size > 0:
-                M = np.absolute(np.dot(phi_function(S_hat),v).flatten())
+                M = np.divide(np.absolute(np.dot(phi_function(S_hat),v).flatten()), np.maximum(np.power(np.linalg.norm(S_hat-self.s_old, axis=1, ord=np.inf) / self.del_k, 4.0), 1.0))
+                # M = np.absolute(np.dot(phi_function(S_hat),v).flatten())
                 index = np.argmax(M)
-                if M[index] < psi_1:
+                # if method == 'improve' and (k == q - 1 and M[index] < psi_2):
+                if method == 'improve' and k == q - 1:
                     flag = False
-                elif method == 'improve' and (k == q - 1 and M[index] < psi_2):
-                    flag = False
-                elif method == 'new' and M[index] < psi_2:
+                # elif M[index] < psi_1:
+                #     flag = False
+                elif method == 'new':
                     flag = False
             else:
                 flag = False
@@ -615,15 +617,15 @@ class Optimisation:
                         s = self._find_new_point_alternative(v, phi_function, S[:k, :])
                 except:
                     s = self._find_new_point_alternative(v, phi_function, S[:k, :])
-                if f_hat.size > 0 and M[index] >= abs(np.dot(v, phi_function(s))):
-                    s = S_hat[index,:]
-                    S[k, :] = s
-                    f[k, :] = f_hat[index]
-                    S_hat = np.delete(S_hat, index, 0)
-                    f_hat = np.delete(f_hat, index, 0)
-                else:
-                    S[k, :] = s
-                    f[k, :] = self._blackbox_evaluation(s)
+                # if f_hat.size > 0 and M[index] >= abs(np.dot(v, phi_function(s))) / np.sqrt(np.linalg.norm(s-self.s_old, ord=np.inf)):
+                #     s = S_hat[index,:]
+                #     S[k, :] = s
+                #     f[k, :] = f_hat[index]
+                #     S_hat = np.delete(S_hat, index, 0)
+                #     f_hat = np.delete(f_hat, index, 0)
+                # else:
+                S[k, :] = s
+                f[k, :] = self._blackbox_evaluation(s)
 #           Update U factorisation in LU algorithm
             phi = phi_function(s)
             U[k,k] = np.dot(v, phi)
